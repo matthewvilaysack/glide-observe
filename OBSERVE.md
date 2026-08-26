@@ -9,4 +9,4 @@ Working agreements for this fork:
 
 - Track upstream `main`; keep our changes additive (views, skills, branding) so merges stay cheap.
 - The deck's data contract stays the observe engine's `status.tsv`, produced by any profile; nothing in this fork learns about a specific project.
-- Until the Glide integration lands, this repo is a staging ground; the native deck and the Hubble Observe artifact remain the live surfaces.
+- The view lives at `examples/observe/`: `observe.html` (the deck as a Hubble HTML app, polling its data note) and `observe-note.sh` (wraps the observe CLI's snapshot into `observe/status.md` in a vault). Until the Glide integration lands, that example is the integration surface.

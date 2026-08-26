@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      /* The observe glow identity, sitting on Hubble's theme tokens so the
+         page grounds correctly in light and dark vaults alike. */
+      .deck { display: flex; flex-direction: column; gap: 2rem; padding: 2.5rem; }
+      .cards { display: flex; flex-wrap: wrap; gap: 1.5rem; }
+      .card {
+        flex: 1 1 260px;
+        max-width: 34rem;
+        border-radius: 2.2rem;
+        padding: 1.8rem 2.2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        color: #fff;
+      }
+      .card.updated { background: #7c3aed; box-shadow: 0 0 60px rgba(168, 85, 247, 0.45); }
+      .card.stale { background: #c71567; box-shadow: 0 0 60px rgba(236, 72, 153, 0.35); }
+      .status { display: flex; align-items: center; gap: 0.8rem; font-size: 1.9rem; font-weight: 800; }
+      .face { width: 1.1em; height: 1.1em; flex: none; }
+      .tl { display: flex; align-items: flex-start; overflow-x: auto; padding-bottom: 0.5rem; }
+      .tl-entry { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; flex: none; }
+      .tl-dot { width: 1.4rem; height: 1.4rem; border-radius: 50%; background: #9d174d; box-shadow: 0 0 12px rgba(236, 72, 153, 0.4); }
+      .tl-entry.current .tl-dot { width: 1.9rem; height: 1.9rem; margin-top: -0.25rem; background: #a855f7; box-shadow: 0 0 24px rgba(168, 85, 247, 0.7); }
+      .tl-line { flex: none; width: 3.5rem; height: 3px; margin-top: 0.6rem; background: rgba(236, 72, 153, 0.35); }
+    </style>
+  </head>
+  <body
+    class="m-0 min-h-dvh overflow-auto bg-background font-sans text-foreground"
+    x-data="{
+      error: '',
+      meta: null,
+      envs: [],
+      timeline: [],
+      async load() {
+        const res = await window.hubble.files.safeRead('./status.md');
+        if (!res.ok) { this.error = res.error ?? 'could not read status.md'; return; }
+        this.error = '';
+        const envs = []; const timeline = []; let meta = null;
+        for (const line of res.value.body.split('\n')) {
+          const f = line.split('\t');
+          if (f[0] === 'meta') meta = { checked: f[1] ?? '', ref: f[2] ?? '', title: f[3] ?? '' };
+          if (f[0] === 'env') envs.push({ name: f[1] ?? '', up: f[2] === 'updated', detail: f[3] ?? '' });
+          if (f[0] === 'tl') timeline.push({ label: f[2] ?? '', current: f[3] === 'current' });
+        }
+        this.meta = meta; this.envs = envs; this.timeline = timeline;
+      },
+    }"
+    x-init="load(); setInterval(() => load(), 5000)"
+  >
+    <div class="deck">
+      <div class="flex items-center gap-3">
+        <svg class="w-7 h-7" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M12 2 C14.5 4.5 15.5 8 15 12 L9 12 C8.5 8 9.5 4.5 12 2 Z M9 12 L6 16.5 L9.2 15.2 Z M15 12 L18 16.5 L14.8 15.2 Z M10.8 15.5 L12 19.5 L13.2 15.5 Z" />
+        </svg>
+        <h1 class="font-mono font-semibold tracking-[0.22em] text-2xl m-0">ENVIRONMENTS</h1>
+      </div>
+
+      <p class="font-mono text-sm text-muted-foreground m-0" x-show="meta">
+        <span x-text="meta?.ref"></span>
+        <span class="mx-2" x-text="meta?.title"></span>
+        · checked <span x-text="meta?.checked"></span>
+      </p>
+
+      <p class="font-mono text-sm text-destructive m-0" x-show="error">
+        <span x-text="error"></span> — run the observe refresh script to create observe/status.md.
+      </p>
+
+      <div class="cards">
+        <template x-for="e in envs" :key="e.name">
+          <section class="card" :class="e.up ? 'updated' : 'stale'">
+            <span class="font-mono text-xs font-semibold uppercase tracking-[0.18em] opacity-75" x-text="e.name"></span>
+            <span class="status">
+              <svg class="face" viewBox="0 0 24 24" aria-hidden="true">
+                <g fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <path x-show="e.up" d="M9 9 L9 10.6 M15 9 L15 10.6 M8 14 Q12 18.5 16 14" />
+                  <path x-show="!e.up" d="M9 9 L9 10.6 M15 9 L15 10.6 M8 17 Q12 13 16 17" />
+                </g>
+              </svg>
+              <span x-text="e.up ? 'updated!' : 'not updated?'"></span>
+            </span>
+            <span class="font-mono text-sm opacity-85" x-text="e.detail"></span>
+          </section>
+        </template>
+      </div>
+
+      <div x-show="timeline.length">
+        <p class="font-mono text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Deploy timeline</p>
+        <div class="tl mt-4">
+          <template x-for="(t, i) in timeline" :key="i">
+            <div class="flex items-start">
+              <span class="tl-line" x-show="i > 0"></span>
+              <span class="tl-entry" :class="t.current && 'current'">
+                <span class="tl-dot"></span>
+                <span class="font-mono text-sm font-semibold whitespace-nowrap px-2" x-text="t.label"></span>
+              </span>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
